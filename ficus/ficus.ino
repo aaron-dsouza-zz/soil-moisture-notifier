@@ -12,11 +12,10 @@
 // pin for heatbeat LED
 #define HEARTBEAT_PIN 13 //GPIO13
 #define LONG_DELAY_MS 900000L // 15mins
+//#define LONG_DELAY_MS 30000L // 15mins
 
 
 // Define program constants
-
-//const char* myKey = "6ijn8kjYSA00G8km5iLkk0vp2xmlUkvZ1UhmDoDVcA6KUsiuRiuUpNB1Yu8dMqj9"; // your maker key here
 const char* myKey = "bgmvjJlzmxeJi49_0yy5p8";
 const char* ssid = "Winterfell"; // your router ssid here
 const char* password = "youshallnotpass"; // your router password here
@@ -36,6 +35,7 @@ DataToMaker event(myKey, "soil_is_dry");
 
 int pvsValues[NUMBER_OF_SENSORS];
 bool connectedToWiFI = false;
+bool notificationSent = false;
 
 void setup()
 {
@@ -59,16 +59,28 @@ void setup()
 void loop() {
   if (wifiConnected)
   {
-    if (DetectChange())
+    if (InsufficientMoisture())
     {
-      debugln("connecting...");
-      if (event.connect())
+      // Send a notification to IFTTT only if not sent
+      if(!notificationSent) 
       {
-        debugln("Connected To IFTTT");
-        event.post();
-        debugln("Posted to IFTTT");
+        debugln("connecting...");
+        if (event.connect())
+        {
+          debugln("Connected To IFTTT");
+          event.post();
+          debugln("Posted to IFTTT");
+          notificationSent = true;
+        }
+        else
+        {
+          debugln("Failed To Connect To IFTTT!");
+          notificationSent = false;
+        }
       }
-      else debugln("Failed To Connect To IFTTT!");
+    }
+    else {
+      notificationSent = false;
     }
     unsigned long startMillis = millis();
     while (millis() - startMillis < LONG_DELAY_MS)
@@ -116,30 +128,30 @@ bool wifiConnected()
 }
 
 
-bool DetectChange()
+bool InsufficientMoisture()
 {
   bool changed = false;
 
   output_value= analogRead(sensor_pin);
 
-  Serial.print("Output value:");
+  debug("Output value:");
 
   Serial.println(output_value);
  
   output_value = map(output_value,0,300,0,100);
 
-  Serial.print("Mositure : ");
+  debug("Mositure : ");
 
   Serial.print(output_value);
 
-  Serial.println("%");
+  debugln("%");
 
   delay(1000);
   changed = output_value < 50;
   if (!changed) 
     debugln("Sufficient moisture Detected");
   else
-     debugln("Insufficient moisture Detected");
+    debugln("Insufficient moisture Detected");
   return changed;
 }
 
